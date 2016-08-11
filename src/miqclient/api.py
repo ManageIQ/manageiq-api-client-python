@@ -7,11 +7,11 @@ import logging
 import re
 import requests
 import simplejson
+import six
 from copy import copy
+from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
-
-logger = logging.getLogger(__name__)
 
 
 class APIException(Exception):
@@ -19,7 +19,7 @@ class APIException(Exception):
 
 
 class API(object):
-    def __init__(self, entry_point, auth):
+    def __init__(self, entry_point, auth, logger=None):
         self._entry_point = entry_point
         if isinstance(auth, dict):
             self._auth = (auth["user"], auth["password"])
@@ -30,6 +30,7 @@ class API(object):
         self._session = requests.Session()
         self._session.auth = self._auth
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
+        self.logger = logger or logging.getLogger(__name__)
         self._load_data()
 
     def _load_data(self):
@@ -70,7 +71,7 @@ class API(object):
         raise last_connection_exception
 
     def get(self, url, **get_params):
-        logger.info("[RESTAPI] GET %s %s", url, repr(get_params))
+        self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
             partial(self._session.get, url, params=get_params, verify=False))
         try:
@@ -80,10 +81,10 @@ class API(object):
         return self._result_processor(data)
 
     def post(self, url, **payload):
-        logger.info("[RESTAPI] POST %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] POST %s %r", url, payload)
         data = self._sending_request(
             partial(self._session.post, url, data=json.dumps(payload), verify=False))
-        logger.info("[RESTAPI] RESPONSE %s", data)
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -94,10 +95,10 @@ class API(object):
         return self._result_processor(data)
 
     def delete(self, url, **payload):
-        logger.info("[RESTAPI] DELETE %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] DELETE %s %r", url, payload)
         data = self._sending_request(
             partial(self._session.delete, url, data=json.dumps(payload), verify=False))
-        logger.info("[RESTAPI] RESPONSE %s", data)
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -123,7 +124,7 @@ class API(object):
 
     @property
     def versions(self):
-        return sorted(self._versions.keys(), reverse=True, key=Version)
+        return sorted(self._versions.keys(), reverse=True, key=LooseVersion)
 
     @property
     def new_id_behaviour(self):
@@ -162,7 +163,7 @@ class CollectionsIndex(object):
         return map(lambda c: c.name, self.all)
 
     def __contains__(self, collection):
-        if isinstance(collection, basestring):
+        if isinstance(collection, six.string_types):
             return collection in self.all_names
         else:
             return collection in self.all
@@ -304,7 +305,8 @@ class Entity(object):
     # TODO: Extend these fields
     TIME_FIELDS = {
         "updated_on", "created_on", "last_scan_attempt_on", "state_changed_on", "lastlogon",
-        "updated_at", "created_at", "last_scan_on", "last_sync_on", "last_refresh_date", "retires_on",}
+        "updated_at", "created_at", "last_scan_on", "last_sync_on", "last_refresh_date",
+        "retires_on"}
     COLLECTION_MAPPING = dict(
         ems_id="providers",
         storage_id="data_stores",
@@ -357,7 +359,7 @@ class Entity(object):
                 expand = ",".join(map(str, expand))
             kwargs.update(expand=expand)
         if attributes is not None:
-            if isinstance(attributes, basestring):
+            if isinstance(attributes, six.string_types):
                 attributes = [attributes]
             kwargs.update(attributes=",".join(attributes))
         if get:
@@ -366,9 +368,8 @@ class Entity(object):
                 self._data = new
             else:
                 self._data.update(new)
-        if (
-                "id" in self._data and "href" in self._data
-                and isinstance(self._data["href"], basestring)):
+        if ("id" in self._data and "href" in self._data and
+                isinstance(self._data["href"], six.string_types)):
             self._href = self._data["href"]
         else:
             self._href = self._data["id" if not self.collection._api.new_id_behaviour else "href"]
