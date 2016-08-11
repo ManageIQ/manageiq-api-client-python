@@ -3,15 +3,15 @@
 # I got another stage of this library aside, but this is perfectly usable with some restrictions :)
 import iso8601
 import json
+import logging
 import re
 import requests
 import simplejson
 from copy import copy
-from fixtures.pytest_store import store
 from functools import partial
-from utils.log import logger
-from utils.version import Version
-from utils.wait import wait_for
+from wait_for import wait_for
+
+logger = logging.getLogger(__name__)
 
 
 class APIException(Exception):
@@ -44,7 +44,7 @@ class API(object):
 
     @property
     def version(self):
-        return Version(self._version)
+        return self._version
 
     @staticmethod
     def _result_processor(result):
@@ -562,7 +562,3 @@ class Action(object):
 
     def __repr__(self):
         return "<Action {} {}#{}>".format(self._method, self._container._obj._href, self._name)
-
-
-def rest_api():
-    return store.current_appliance.rest_api

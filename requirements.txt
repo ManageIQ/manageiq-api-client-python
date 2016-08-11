@@ -1,0 +1,4 @@
+iso8601==0.1.11
+requests==2.11.0
+simplejson==3.8.2
+wait-for==1.0.3
