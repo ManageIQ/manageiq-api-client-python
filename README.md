@@ -11,7 +11,8 @@ Preparing your python virtual environment:
 
     $ virtualenv venv
     $ source venv/bin/activate
-    $ pip install -r requirements.txt
+    $ pip install -e .  # To create an editable install of this package
+    $ pip install git+https://github.com/ManageIQ/manageiq-api-client-python.git  # Or you can install it from git directly
 
 To run the example present in this repository you probably need to configure
 your options (if different from the default shown here):
