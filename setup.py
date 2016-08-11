@@ -10,7 +10,7 @@ setup(
     use_scm_version=True,
     author="Milan Falesnik",
     author_email="mfalesni@redhat.com",
-    description="Python client for the REST API of ManageIQ.",
+    description="Python client for the ManageIQ REST-API",
     license="GPLv2",
     keywords=['api', 'rest', 'client', 'manageiq'],
     url="https://github.com/ManageIQ/manageiq-api-client-python",
