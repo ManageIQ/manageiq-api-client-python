@@ -71,7 +71,7 @@ class API(object):
         raise last_connection_exception
 
     def get(self, url, **get_params):
-        self.logger.info("[RESTAPI] GET %s %s", url, repr(get_params))
+        self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
             partial(self._session.get, url, params=get_params, verify=False))
         try:
@@ -81,7 +81,7 @@ class API(object):
         return self._result_processor(data)
 
     def post(self, url, **payload):
-        self.logger.info("[RESTAPI] POST %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] POST %s %r", url, payload)
         data = self._sending_request(
             partial(self._session.post, url, data=json.dumps(payload), verify=False))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
@@ -95,7 +95,7 @@ class API(object):
         return self._result_processor(data)
 
     def delete(self, url, **payload):
-        self.logger.info("[RESTAPI] DELETE %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] DELETE %s %r", url, payload)
         data = self._sending_request(
             partial(self._session.delete, url, data=json.dumps(payload), verify=False))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
