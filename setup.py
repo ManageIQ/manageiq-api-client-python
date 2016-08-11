@@ -21,6 +21,7 @@ setup(
         'wait-for',
         'iso8601',
         'simplejson',
+        'six',
     ],
     setup_requires=[
         'setuptools_scm',

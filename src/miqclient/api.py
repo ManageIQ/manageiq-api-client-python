@@ -7,7 +7,9 @@ import logging
 import re
 import requests
 import simplejson
+import six
 from copy import copy
+from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
@@ -123,7 +125,7 @@ class API(object):
 
     @property
     def versions(self):
-        return sorted(self._versions.keys(), reverse=True, key=Version)
+        return sorted(self._versions.keys(), reverse=True, key=LooseVersion)
 
     @property
     def new_id_behaviour(self):
@@ -162,7 +164,7 @@ class CollectionsIndex(object):
         return map(lambda c: c.name, self.all)
 
     def __contains__(self, collection):
-        if isinstance(collection, basestring):
+        if isinstance(collection, six.string_types):
             return collection in self.all_names
         else:
             return collection in self.all
@@ -304,7 +306,8 @@ class Entity(object):
     # TODO: Extend these fields
     TIME_FIELDS = {
         "updated_on", "created_on", "last_scan_attempt_on", "state_changed_on", "lastlogon",
-        "updated_at", "created_at", "last_scan_on", "last_sync_on", "last_refresh_date", "retires_on",}
+        "updated_at", "created_at", "last_scan_on", "last_sync_on", "last_refresh_date",
+        "retires_on"}
     COLLECTION_MAPPING = dict(
         ems_id="providers",
         storage_id="data_stores",
@@ -357,7 +360,7 @@ class Entity(object):
                 expand = ",".join(map(str, expand))
             kwargs.update(expand=expand)
         if attributes is not None:
-            if isinstance(attributes, basestring):
+            if isinstance(attributes, six.string_types):
                 attributes = [attributes]
             kwargs.update(attributes=",".join(attributes))
         if get:
@@ -366,9 +369,8 @@ class Entity(object):
                 self._data = new
             else:
                 self._data.update(new)
-        if (
-                "id" in self._data and "href" in self._data
-                and isinstance(self._data["href"], basestring)):
+        if ("id" in self._data and "href" in self._data and
+                isinstance(self._data["href"], six.string_types)):
             self._href = self._data["href"]
         else:
             self._href = self._data["id" if not self.collection._api.new_id_behaviour else "href"]
