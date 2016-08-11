@@ -13,15 +13,13 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
-logger = logging.getLogger(__name__)
-
 
 class APIException(Exception):
     pass
 
 
 class API(object):
-    def __init__(self, entry_point, auth):
+    def __init__(self, entry_point, auth, logger=None):
         self._entry_point = entry_point
         if isinstance(auth, dict):
             self._auth = (auth["user"], auth["password"])
@@ -32,6 +30,7 @@ class API(object):
         self._session = requests.Session()
         self._session.auth = self._auth
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
+        self.logger = logger or logging.getLogger(__name__)
         self._load_data()
 
     def _load_data(self):
@@ -72,7 +71,7 @@ class API(object):
         raise last_connection_exception
 
     def get(self, url, **get_params):
-        logger.info("[RESTAPI] GET %s %s", url, repr(get_params))
+        self.logger.info("[RESTAPI] GET %s %s", url, repr(get_params))
         data = self._sending_request(
             partial(self._session.get, url, params=get_params, verify=False))
         try:
@@ -82,10 +81,10 @@ class API(object):
         return self._result_processor(data)
 
     def post(self, url, **payload):
-        logger.info("[RESTAPI] POST %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] POST %s %s", url, repr(payload))
         data = self._sending_request(
             partial(self._session.post, url, data=json.dumps(payload), verify=False))
-        logger.info("[RESTAPI] RESPONSE %s", data)
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -96,10 +95,10 @@ class API(object):
         return self._result_processor(data)
 
     def delete(self, url, **payload):
-        logger.info("[RESTAPI] DELETE %s %s", url, repr(payload))
+        self.logger.info("[RESTAPI] DELETE %s %s", url, repr(payload))
         data = self._sending_request(
             partial(self._session.delete, url, data=json.dumps(payload), verify=False))
-        logger.info("[RESTAPI] RESPONSE %s", data)
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
