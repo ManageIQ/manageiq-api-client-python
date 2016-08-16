@@ -127,11 +127,6 @@ class API(object):
         return sorted(self._versions.keys(), reverse=True, key=LooseVersion)
 
     @property
-    def new_id_behaviour(self):
-        """2.0.0 introduced a new id/href difference."""
-        return self.version >= "2.0.0"
-
-    @property
     def latest_version(self):
         return self.versions[0]
 
@@ -229,28 +224,6 @@ class Collection(object):
             self.reload()
 
     def find_by(self, **params):
-        """Search items in collection. Filters based on keywords passed."""
-        if self._api.version == "2.0.0-pre":
-            # Special case, there can be both, so try sqlfilter first and if that does not work ...
-            try:
-                return self._find_by_sqlfilter(**params)
-            except APIException:
-                return self._find_by_filter(**params)
-        elif self._api.version.is_in_series("1.1") or self._api.version >= "2.0.0":
-            # New function
-            return self._find_by_filter(**params)
-        else:
-            # Old function
-            return self._find_by_sqlfilter(**params)
-
-    def _find_by_sqlfilter(self, **params):
-        search_query = []
-        for key, value in params.iteritems():
-            search_query.append("{} = {}".format(key, repr(str(value))))
-        return SearchResult(
-            self, self._api.get(self._href, **{"sqlfilter": " AND ".join(search_query)}))
-
-    def _find_by_filter(self, **params):
         search_query = []
         for key, value in params.iteritems():
             if isinstance(value, int):
@@ -368,11 +341,7 @@ class Entity(object):
                 self._data = new
             else:
                 self._data.update(new)
-        if ("id" in self._data and "href" in self._data and
-                isinstance(self._data["href"], six.string_types)):
-            self._href = self._data["href"]
-        else:
-            self._href = self._data["id" if not self.collection._api.new_id_behaviour else "href"]
+        self._href = self._data["href"]
         self._actions = self._data.pop("actions", [])
         for key, value in self._data.iteritems():
             if key in self.TIME_FIELDS:
