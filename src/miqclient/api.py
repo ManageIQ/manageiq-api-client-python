@@ -13,6 +13,8 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
+from .utils import escape_filter
+
 
 class APIException(Exception):
     pass
@@ -224,12 +226,13 @@ class Collection(object):
             self.reload()
 
     def find_by(self, **params):
-        search_query = []
-        for key, value in params.iteritems():
-            if isinstance(value, int):
-                search_query.append("{}={}".format(key, value))
-            else:
-                search_query.append("{}={}".format(key, repr(str(value))))
+        """Searches in ManageIQ using the ``filter[]`` get parameter.
+
+        This method only supports logical AND so all key/value pairs are considered as equality
+        comparision and all are logically anded.
+        """
+        search_query = [
+            '{} = {}'.format(key, escape_filter(value)) for key, value in six.iteritems(params)]
         return SearchResult(self, self._api.get(self._href, **{"filter[]": search_query}))
 
     def get(self, **params):
