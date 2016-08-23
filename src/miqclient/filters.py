@@ -47,6 +47,8 @@ class Q(object):
 
     def __init__(self, name, op, value):
         self.name = name
+        if op not in OPERATORS:
+            raise ValueError('Invalid operator {}'.format(op))
         self.op = op
         self.value = value
         self.preceeding = None
