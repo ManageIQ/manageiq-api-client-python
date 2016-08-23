@@ -13,7 +13,7 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
-from .filters import gen_filter, Q
+from .filters import Q
 
 
 class APIException(Exception):
