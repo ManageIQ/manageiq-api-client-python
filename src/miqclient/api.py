@@ -190,7 +190,7 @@ class SearchResult(object):
         return self.subcount
 
     def __repr__(self):
-        return "<SearchResult for {}>".format(repr(self.collection))
+        return "<SearchResult for {!r}>".format(self.collection)
 
 
 class Collection(object):
@@ -259,7 +259,7 @@ class Collection(object):
         try:
             return self.find_by(**params)[0]
         except IndexError:
-            raise ValueError("No such '{}' matching query {}!".format(self.name, repr(params)))
+            raise ValueError("No such '{}' matching query {!r}!".format(self.name, params))
 
     @property
     def count(self):
@@ -277,7 +277,7 @@ class Collection(object):
         return map(lambda r: Entity(self, r), self._resources)
 
     def __repr__(self):
-        return "<Collection {} ({})>".format(repr(self.name), repr(self.description))
+        return "<Collection {!r} ({!r})>".format(self.name, self.description)
 
     def __call__(self, entity_id, attributes=None):
         return self._api.get_entity(self, entity_id, attributes=attributes)
@@ -346,7 +346,7 @@ class Entity(object):
             self._href = self._data["href"]
             # self._data = None
         else:  # Malformed
-            raise ValueError("Malformed data: {}".format(repr(self._data)))
+            raise ValueError("Malformed data: {!r}".format(self._data))
 
     def reload(self, expand=None, get=True, attributes=None):
         kwargs = {}
@@ -440,7 +440,7 @@ class Entity(object):
         return getattr(self, item)
 
     def __repr__(self):
-        return "<Entity {}>".format(repr(self._href))
+        return "<Entity {!r}>".format(self._href)
 
     def _ref_repr(self):
         return {"href": self._href}
