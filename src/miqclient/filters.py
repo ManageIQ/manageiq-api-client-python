@@ -33,6 +33,18 @@ class Q(object):
     because that is what filter supports.
 
     """
+    @classmethod
+    def from_dict(cls, d):
+        """Creates a query (AND and =) from a dictionary."""
+        if not d:
+            raise ValueError('Empty dictionary!')
+        items = list(d.items())
+        key, value = items.pop(0)
+        q = cls(key, u'=', value)
+        for key, value in items:
+            q = q & cls(key, u'=', value)
+        return q
+
     def __init__(self, name, op, value):
         self.name = name
         self.op = op

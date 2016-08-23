@@ -13,7 +13,7 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
-from .filters import gen_filter
+from .filters import gen_filter, Q
 
 
 class APIException(Exception):
@@ -253,8 +253,7 @@ class Collection(object):
         This method only supports logical AND so all key/value pairs are considered as equality
         comparision and all are logically anded.
         """
-        search_query = [gen_filter(key, u'=', value) for key, value in six.iteritems(params)]
-        return self.raw_filter(search_query)
+        return self.filter(Q.from_dict(params))
 
     def get(self, **params):
         try:
