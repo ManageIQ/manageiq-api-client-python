@@ -13,6 +13,8 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
+from .filters import gen_filter, Q
+
 
 class APIException(Exception):
     pass
@@ -223,14 +225,35 @@ class Collection(object):
         if self._data is None:
             self.reload()
 
+    def raw_filter(self, filters):
+        """Sends all filters to the API.
+
+        No fancy, just a wrapper. Any advanced functionality shall be implemented as another method.
+
+        Args:
+            filters: List of filters (strings)
+
+        Returns: :py:class:`SearchResult`
+        """
+        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters}))
+
+    def filter(self, q):
+        """Access the ``filter[]`` functionality of ManageIQ.
+
+        Args:
+            q: An instance of :py:class:`filters.Q`
+
+        Returns: :py:class:`SearchResult`
+        """
+        return self.raw_filter(q.as_filters)
+
     def find_by(self, **params):
-        search_query = []
-        for key, value in params.iteritems():
-            if isinstance(value, int):
-                search_query.append("{}={}".format(key, value))
-            else:
-                search_query.append("{}={}".format(key, repr(str(value))))
-        return SearchResult(self, self._api.get(self._href, **{"filter[]": search_query}))
+        """Searches in ManageIQ using the ``filter[]`` get parameter.
+
+        This method only supports logical AND so all key/value pairs are considered as equality
+        comparision and all are logically anded.
+        """
+        return self.filter(Q.from_dict(params))
 
     def get(self, **params):
         try:
