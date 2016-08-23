@@ -62,7 +62,7 @@ def escape_filter(o):
                 quote = give_another_quote(first_char)
             else:
                 # last_char
-                quote = give_another_quote(first_char)
+                quote = give_another_quote(last_char)
             return quote + o + quote
 
 
