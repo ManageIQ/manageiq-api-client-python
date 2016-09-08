@@ -13,6 +13,8 @@ from distutils.version import LooseVersion
 from functools import partial
 from wait_for import wait_for
 
+from .filters import Q
+
 
 class APIException(Exception):
     pass
@@ -188,7 +190,7 @@ class SearchResult(object):
         return self.subcount
 
     def __repr__(self):
-        return "<SearchResult for {}>".format(repr(self.collection))
+        return "<SearchResult for {!r}>".format(self.collection)
 
 
 class Collection(object):
@@ -223,20 +225,41 @@ class Collection(object):
         if self._data is None:
             self.reload()
 
+    def raw_filter(self, filters):
+        """Sends all filters to the API.
+
+        No fancy, just a wrapper. Any advanced functionality shall be implemented as another method.
+
+        Args:
+            filters: List of filters (strings)
+
+        Returns: :py:class:`SearchResult`
+        """
+        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters}))
+
+    def filter(self, q):
+        """Access the ``filter[]`` functionality of ManageIQ.
+
+        Args:
+            q: An instance of :py:class:`filters.Q`
+
+        Returns: :py:class:`SearchResult`
+        """
+        return self.raw_filter(q.as_filters)
+
     def find_by(self, **params):
-        search_query = []
-        for key, value in params.iteritems():
-            if isinstance(value, int):
-                search_query.append("{}={}".format(key, value))
-            else:
-                search_query.append("{}={}".format(key, repr(str(value))))
-        return SearchResult(self, self._api.get(self._href, **{"filter[]": search_query}))
+        """Searches in ManageIQ using the ``filter[]`` get parameter.
+
+        This method only supports logical AND so all key/value pairs are considered as equality
+        comparision and all are logically anded.
+        """
+        return self.filter(Q.from_dict(params))
 
     def get(self, **params):
         try:
             return self.find_by(**params)[0]
         except IndexError:
-            raise ValueError("No such '{}' matching query {}!".format(self.name, repr(params)))
+            raise ValueError("No such '{}' matching query {!r}!".format(self.name, params))
 
     @property
     def count(self):
@@ -254,7 +277,7 @@ class Collection(object):
         return map(lambda r: Entity(self, r), self._resources)
 
     def __repr__(self):
-        return "<Collection {} ({})>".format(repr(self.name), repr(self.description))
+        return "<Collection {!r} ({!r})>".format(self.name, self.description)
 
     def __call__(self, entity_id, attributes=None):
         return self._api.get_entity(self, entity_id, attributes=attributes)
@@ -323,7 +346,7 @@ class Entity(object):
             self._href = self._data["href"]
             # self._data = None
         else:  # Malformed
-            raise ValueError("Malformed data: {}".format(repr(self._data)))
+            raise ValueError("Malformed data: {!r}".format(self._data))
 
     def reload(self, expand=None, get=True, attributes=None):
         kwargs = {}
@@ -417,7 +440,7 @@ class Entity(object):
         return getattr(self, item)
 
     def __repr__(self):
-        return "<Entity {}>".format(repr(self._href))
+        return "<Entity {!r}>".format(self._href)
 
     def _ref_repr(self):
         return {"href": self._href}
