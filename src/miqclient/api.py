@@ -21,7 +21,8 @@ class APIException(Exception):
 
 
 class API(object):
-    def __init__(self, entry_point, auth, logger=None):
+    def __init__(self, entry_point, auth, logger=None, verify_ssl=True, ca_bundle_path=None):
+        """ If ca_bundle_path is specified it replaces the system's trusted root CAs"""
         self._entry_point = entry_point
         if isinstance(auth, dict):
             self._auth = (auth["user"], auth["password"])
@@ -30,6 +31,10 @@ class API(object):
         else:
             raise ValueError("Unknown values provider for auth")
         self._session = requests.Session()
+        if not verify_ssl:
+            self._session.verify = False
+        elif ca_bundle_path:
+            self._session.verify = ca_bundle_path
         self._session.auth = self._auth
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
         self.logger = logger or logging.getLogger(__name__)
@@ -75,7 +80,7 @@ class API(object):
     def get(self, url, **get_params):
         self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
-            partial(self._session.get, url, params=get_params, verify=False))
+            partial(self._session.get, url, params=get_params))
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -85,7 +90,7 @@ class API(object):
     def post(self, url, **payload):
         self.logger.info("[RESTAPI] POST %s %r", url, payload)
         data = self._sending_request(
-            partial(self._session.post, url, data=json.dumps(payload), verify=False))
+            partial(self._session.post, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
@@ -99,7 +104,7 @@ class API(object):
     def delete(self, url, **payload):
         self.logger.info("[RESTAPI] DELETE %s %r", url, payload)
         data = self._sending_request(
-            partial(self._session.delete, url, data=json.dumps(payload), verify=False))
+            partial(self._session.delete, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         try:
             data = data.json()
