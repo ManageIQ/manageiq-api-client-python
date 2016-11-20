@@ -1,5 +1,5 @@
 import os
-from miqclient.api import API as MiqApi
+from manageiq_client.api import ManageIQClient as MiqApi
 
 url = os.environ.get('MIQURL') or 'http://localhost:3000/api'
 username = os.environ.get('MIQUSERNAME') or 'admin'

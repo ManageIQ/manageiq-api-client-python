@@ -6,7 +6,7 @@ from setuptools import setup
 
 
 setup(
-    name="manageiq-api-client-python",
+    name="manageiq-client",
     use_scm_version=True,
     author="Milan Falesnik",
     author_email="mfalesni@redhat.com",
@@ -14,7 +14,7 @@ setup(
     license="GPLv2",
     keywords=['api', 'rest', 'client', 'manageiq'],
     url="https://github.com/ManageIQ/manageiq-api-client-python",
-    packages=["miqclient"],
+    packages=["manageiq_client"],
     package_dir={'': 'src'},
     install_requires=[
         'requests',

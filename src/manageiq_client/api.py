@@ -20,7 +20,7 @@ class APIException(Exception):
     pass
 
 
-class API(object):
+class ManageIQClient(object):
     def __init__(self, entry_point, auth, logger=None, verify_ssl=True, ca_bundle_path=None):
         """ If ca_bundle_path is specified it replaces the system's trusted root CAs"""
         self._entry_point = entry_point
