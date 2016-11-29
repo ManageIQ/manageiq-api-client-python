@@ -47,7 +47,7 @@ class API(object):
         self._versions = {}
         for version in data.pop("versions", []):
             self._versions[version["name"]] = version["href"]
-        for key, value in data.iteritems():
+        for key, value in data.items():
             setattr(self, key, value)
 
     @property
@@ -371,7 +371,7 @@ class Entity(object):
                 self._data.update(new)
         self._href = self._data["href"]
         self._actions = self._data.pop("actions", [])
-        for key, value in self._data.iteritems():
+        for key, value in self._data.items():
             if key in self.TIME_FIELDS:
                 setattr(self, key, iso8601.parse_date(value))
             elif key in self.COLLECTION_MAPPING.keys():
