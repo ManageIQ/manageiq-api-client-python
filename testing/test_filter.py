@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import pytest
 
-from miqclient.filters import Q
-from miqclient.utils import escape_filter
+from manageiq_client.filters import Q
+from manageiq_client.utils import escape_filter
 
 
 class TestEscapeFilter(object):
