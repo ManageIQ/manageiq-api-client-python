@@ -115,6 +115,16 @@ class ManageIQClient(object):
                 raise APIException("JSONDecodeError: {}".format(data.text))
         return self._result_processor(data)
 
+    def options(self, url, **opt_params):
+        self.logger.info("[RESTAPI] OPTIONS %s %r", url, opt_params)
+        data = self._sending_request(
+            partial(self._session.options, url, params=opt_params, verify=False))
+        try:
+            data = data.json()
+        except simplejson.scanner.JSONDecodeError:
+            raise APIException("JSONDecodeError: {}".format(data.text))
+        return self._result_processor(data)
+
     def get_entity(self, collection_or_name, entity_id, attributes=None):
         if not isinstance(collection_or_name, Collection):
             collection = Collection(
@@ -174,8 +184,8 @@ class CollectionsIndex(object):
 class SearchResult(object):
     def __init__(self, collection, data):
         self.collection = collection
-        self.count = data.pop("count")
-        self.subcount = data.pop("subcount")
+        self.count = data.pop("count", 0)
+        self.subcount = data.pop("subcount", 0)
         self.name = data.pop("name")
         self.resources = []
         for resource in data["resources"]:
@@ -220,8 +230,8 @@ class Collection(object):
             kwargs = {}
         self._data = self._api.get(self._href, **kwargs)
         self._resources = self._data["resources"]
-        self._count = self._data["count"]
-        self._subcount = self._data["subcount"]
+        self._count = self._data.get("count", 0)
+        self._subcount = self._data.get("subcount", 0)
         self._actions = self._data.pop("actions", [])
         if self._data["name"] != self.name:
             raise ValueError("Name mishap!")
@@ -229,6 +239,13 @@ class Collection(object):
     def reload_if_needed(self):
         if self._data is None:
             self.reload()
+
+    def query_string(self, **params):
+        """Specify query string to use with the collection.
+
+        Returns: :py:class:`SearchResult`
+        """
+        return SearchResult(self, self._api.get(self._href, **params))
 
     def raw_filter(self, filters):
         """Sends all filters to the API.
@@ -265,6 +282,9 @@ class Collection(object):
             return self.find_by(**params)[0]
         except IndexError:
             raise ValueError("No such '{}' matching query {!r}!".format(self.name, params))
+
+    def options(self, **params):
+        return self._api.options(self._href, **params)
 
     @property
     def count(self):
@@ -322,7 +342,7 @@ class Entity(object):
     SUBCOLLECTIONS = dict(
         service_catalogs={"service_templates"},
         roles={"features"},
-        providers={"tags"},
+        providers={"tags", "custom_attributes"},
         hosts={"tags"},
         data_stores={"tags"},
         resource_pools={"tags"},
@@ -342,6 +362,7 @@ class Entity(object):
         self.action = ActionContainer(self)
         self._data = data
         self._incomplete = incomplete
+        self._href = None
         self._load_data()
 
     def _load_data(self):
@@ -363,13 +384,14 @@ class Entity(object):
             if isinstance(attributes, six.string_types):
                 attributes = [attributes]
             kwargs.update(attributes=",".join(attributes))
-        if get:
+        if "href" in self._data:
+            self._href = self._data["href"]
+        if get and self._href:
             new = self.collection._api.get(self._href, **kwargs)
             if self._data is None:
                 self._data = new
             else:
                 self._data.update(new)
-        self._href = self._data["href"]
         self._actions = self._data.pop("actions", [])
         for key, value in self._data.items():
             if key in self.TIME_FIELDS:
@@ -381,14 +403,15 @@ class Entity(object):
                     self.collection._api.get_entity(self.COLLECTION_MAPPING[key], value)
                 )
                 setattr(self, key, value)
-            elif isinstance(value, dict) and "count" in value and "resources" in value:
+            elif (isinstance(value, dict) and self._href and
+                  "count" in value and "resources" in value):
                 href = self._href
                 if not href.endswith("/"):
                     href += "/"
                 subcol = Collection(self.collection._api, href + key, key)
                 setattr(self, key, subcol)
-            elif isinstance(value, list) and key in self.EXTENDED_COLLECTIONS.get(
-                    self.collection.name, set([])):
+            elif (isinstance(value, list) and self._href and
+                  key in self.EXTENDED_COLLECTIONS.get(self.collection.name, set([]))):
                 href = self._href
                 if not href.endswith("/"):
                     href += "/"
@@ -428,6 +451,8 @@ class Entity(object):
             return self.__dict__[attr]
         if attr not in self.SUBCOLLECTIONS.get(self.collection.name, set([])):
             raise AttributeError("No such attribute/subcollection {}".format(attr))
+        if not self._href:
+            raise AttributeError("Can't get URL of attribute/subcollection {}".format(attr))
         # Try to get subcollection
         href = self._href
         if not href.endswith("/"):
@@ -445,10 +470,10 @@ class Entity(object):
         return getattr(self, item)
 
     def __repr__(self):
-        return "<Entity {!r}>".format(self._href)
+        return "<Entity {!r}>".format(self._href if self._href else self._data["id"])
 
     def _ref_repr(self):
-        return {"href": self._href}
+        return {"href": self._href} if self._href else {"id": self._data["id"]}
 
 
 class ActionContainer(object):
@@ -457,11 +482,18 @@ class ActionContainer(object):
 
     def reload(self):
         self._obj.reload_if_needed()
+        reloaded_actions = []
         for action in self._obj._actions:
-            setattr(
-                self,
-                action["name"],
-                Action(self, action["name"], action["method"], action["href"]))
+            # There can be multiple actions with the same name and different methods
+            # (e.g. actions "delete" with method POST and DELETE).
+            # This makes sure that the attribute refers to the first action and is not redefined
+            # by other action with the same name and different method.
+            if action["name"] not in reloaded_actions:
+                reloaded_actions.append(action["name"])
+                setattr(
+                    self,
+                    action["name"],
+                    Action(self, action["name"], action["method"], action["href"]))
 
     def execute_action(self, action_name, *args, **kwargs):
         # To circumvent bad method names, like `import`, you can use this one directly
@@ -508,6 +540,9 @@ class Action(object):
         return self.collection.api
 
     def __call__(self, *args, **kwargs):
+        # possibility to override HTTP method that will be used with the action
+        # (e.g. force_method='delete')
+        method = kwargs.pop('force_method', self._method)
         resources = []
         # We got resources to post
         for res in args:
@@ -526,9 +561,9 @@ class Action(object):
         else:
             if kwargs:
                 query_dict["resource"] = kwargs
-        if self._method == "post":
+        if method == "post":
             result = self.api.post(self._href, **query_dict)
-        elif self._method == "delete":
+        elif method == "delete":
             result = self.api.delete(self._href, **query_dict)
         else:
             raise NotImplementedError
