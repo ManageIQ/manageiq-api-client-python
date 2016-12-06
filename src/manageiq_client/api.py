@@ -118,7 +118,7 @@ class ManageIQClient(object):
     def options(self, url, **opt_params):
         self.logger.info("[RESTAPI] OPTIONS %s %r", url, opt_params)
         data = self._sending_request(
-            partial(self._session.options, url, params=opt_params, verify=False))
+            partial(self._session.options, url, params=opt_params))
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
