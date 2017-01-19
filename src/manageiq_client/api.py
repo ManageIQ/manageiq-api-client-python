@@ -570,7 +570,7 @@ class Action(object):
         if result is None:
             return None
         elif "results" in result:
-            return map(self._process_result, result["results"])
+            return [self._process_result(res) for res in result["results"] if res]
         else:
             return self._process_result(result)
 
