@@ -575,7 +575,9 @@ class Action(object):
             return self._process_result(result)
 
     def _process_result(self, result):
-        if "href" in result:
+        if result is None:
+            return None
+        elif "href" in result:
             return Entity(self.collection, result, incomplete=True)
         elif "id" in result:
             d = copy(result)
