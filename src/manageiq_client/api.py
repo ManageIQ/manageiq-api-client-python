@@ -40,6 +40,7 @@ class ManageIQClient(object):
         self._session.auth = self._auth
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
         self.logger = logger or logging.getLogger(__name__)
+        self.response = None
         self._load_data()
 
     def _load_data(self):
@@ -83,6 +84,7 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
             partial(self._session.get, url, params=get_params))
+        self.response = data
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -94,6 +96,7 @@ class ManageIQClient(object):
         data = self._sending_request(
             partial(self._session.post, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
+        self.response = data
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -108,6 +111,7 @@ class ManageIQClient(object):
         data = self._sending_request(
             partial(self._session.delete, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
+        self.response = data
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -121,6 +125,7 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] OPTIONS %s %r", url, opt_params)
         data = self._sending_request(
             partial(self._session.options, url, params=opt_params))
+        self.response = data
         try:
             data = data.json()
         except simplejson.scanner.JSONDecodeError:
@@ -571,10 +576,16 @@ class Action(object):
             raise NotImplementedError
         if result is None:
             return None
-        elif "results" in result:
-            return map(self._process_result, result["results"])
-        else:
-            return self._process_result(result)
+        # Make sure that HTTP response from action is not overriden during result processing
+        action_response = self.api.response
+        try:
+            if "results" in result:
+                outcome = map(self._process_result, result["results"])
+            else:
+                outcome = self._process_result(result)
+        finally:
+            self.api.response = action_response
+        return outcome
 
     def _process_result(self, result):
         if result is None:
