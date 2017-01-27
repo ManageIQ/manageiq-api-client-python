@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # TODO: WIP WIP WIP WIP!
 # I got another stage of this library aside, but this is perfectly usable with some restrictions :)
-import iso8601
 import json
 import logging
 import re
+import warnings
 import requests
 import simplejson
 import six
+import iso8601
 from copy import copy
 from distutils.version import LooseVersion
 from functools import partial
@@ -33,6 +34,7 @@ class ManageIQClient(object):
         self._session = requests.Session()
         if not verify_ssl:
             self._session.verify = False
+            warnings.filterwarnings('once', message='.*Unverified HTTPS request.*')
         elif ca_bundle_path:
             self._session.verify = ca_bundle_path
         self._session.auth = self._auth
