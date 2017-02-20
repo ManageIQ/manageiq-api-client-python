@@ -491,20 +491,26 @@ class ActionContainer(object):
         self._obj.reload_if_needed()
         reloaded_actions = []
         for action in self._obj._actions:
-            # There can be multiple actions with the same name and different methods
-            # (e.g. actions "delete" with method POST and DELETE).
-            # This makes sure that the attribute refers to the first action and is not redefined
-            # by other action with the same name and different method.
+            action_obj = Action(self, action["name"], action["method"], action["href"])
+            # There can be multiple actions with the same name and different HTTP methods
+            # (e.g. action "delete" with HTTP methods POST or DELETE).
+            # Create action ``.name()`` with default (first) method.
+            # For each method, create action ``.name.METHOD()``.
+            # E.g. default action ``.delete()`` with method POST and actions
+            # ``.delete.POST()`` and ``.delete.DELETE()``.
             if action["name"] not in reloaded_actions:
                 reloaded_actions.append(action["name"])
-                setattr(
-                    self,
-                    action["name"],
-                    Action(self, action["name"], action["method"], action["href"]))
+                setattr(self, action["name"], action_obj)
+            setattr(self.__dict__[action["name"]],
+                    action["method"].upper(),
+                    action_obj)
 
     def execute_action(self, action_name, *args, **kwargs):
         # To circumvent bad method names, like `import`, you can use this one directly
         action = getattr(self, action_name)
+        action_method = kwargs.pop('action_method', None)
+        if action_method:
+            action = getattr(action, action_method)
         return action(*args, **kwargs)
 
     @property
@@ -547,9 +553,13 @@ class Action(object):
         return self.collection.api
 
     def __call__(self, *args, **kwargs):
+        # TODO: for backwards compatibility - can be removed when no longer used
         # possibility to override HTTP method that will be used with the action
         # (e.g. force_method='delete')
-        method = kwargs.pop('force_method', self._method)
+        force_method = kwargs.pop('force_method', None)
+        if force_method:
+            return getattr(self, force_method.upper())(*args, **kwargs)
+
         resources = []
         # We got resources to post
         for res in args:
@@ -568,9 +578,9 @@ class Action(object):
         else:
             if kwargs:
                 query_dict["resource"] = kwargs
-        if method == "post":
+        if self._method == "post":
             result = self.api.post(self._href, **query_dict)
-        elif method == "delete":
+        elif self._method == "delete":
             result = self.api.delete(self._href, **query_dict)
         else:
             raise NotImplementedError
