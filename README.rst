@@ -32,6 +32,14 @@ To generate a temporary miq token from the MIQ Dev environment use the following
 
     $ bin/rails r 'puts Api::UserTokenService.new.generate_token("admin","api")'
 
+To run tests locally in a Dev Environment::
+
+    $ sudo pip install tox
+    $ tox # this will run tests on all versions of python
+    $ tox -e py27 -- -x testing/test_api_credentials.py # just on python 2.7
+
+
+
 Legal
 -----
 
