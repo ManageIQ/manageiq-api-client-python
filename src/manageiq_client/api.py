@@ -220,6 +220,8 @@ class Collection(object):
         self._api = api
         self._href = href
         self._data = None
+        self._subcollections = None
+        self._subcollections_loaded = False
         self.action = ActionContainer(self)
         self.name = name
         self.description = description
@@ -227,6 +229,23 @@ class Collection(object):
     @property
     def api(self):
         return self._api
+
+    @property
+    def subcollections(self):
+        # it's enought to try to load the subcollections list once
+        if not self._subcollections_loaded:
+            self._subcollections_loaded = True
+            try:
+                opts = self._api.options(self._href)
+                self._subcollections = opts['subcollections']
+            except Exception:
+                # OPTIONS are supported only in new versions of API and subcollections are
+                # returned only in even newer versions. Many things can go wrong here,
+                # hence this broad except.
+                self._subcollections = None
+                self._api.logger.warning(
+                    "[RESTAPI] failed to get subcollections list for %s", self._href)
+        return self._subcollections
 
     def reload(self, expand=False):
         if expand is True:
@@ -345,21 +364,6 @@ class Entity(object):
         evm_owner_id="users",
         task_id="tasks",
     )
-    # TODO: Extend
-    SUBCOLLECTIONS = dict(
-        service_catalogs={"service_templates"},
-        roles={"features"},
-        providers={"tags", "custom_attributes", "cloud_networks"},
-        hosts={"tags"},
-        data_stores={"tags"},
-        resource_pools={"tags"},
-        clusters={"tags"},
-        services={"tags"},
-        service_templates={"tags"},
-        tenants={"tags"},
-        vms={"tags"},
-    )
-
     EXTENDED_COLLECTIONS = dict(
         roles={"features"},
     )
@@ -436,6 +440,10 @@ class Entity(object):
         else:
             return True
 
+    @property
+    def subcollections(self):
+        return self.collection.subcollections
+
     def wait_for_existence(self, existence, **kwargs):
         return wait_for(
             lambda: self.exists, fail_condition=not existence, **kwargs)
@@ -456,8 +464,9 @@ class Entity(object):
         if attr in self.__dict__:
             # It got loaded
             return self.__dict__[attr]
-        if attr not in self.SUBCOLLECTIONS.get(self.collection.name, set([])):
-            raise AttributeError("No such attribute/subcollection {}".format(attr))
+        if self.subcollections is not None:
+            if attr not in self.subcollections:
+                raise AttributeError("No such attribute/subcollection {}".format(attr))
         if not self._href:
             raise AttributeError("Can't get URL of attribute/subcollection {}".format(attr))
         # Try to get subcollection
