@@ -9,6 +9,7 @@ Getting Started
 
 Preparing your python virtual environment::
 
+    $ sudo pip install virtualenv
     $ virtualenv venv
     $ source venv/bin/activate
     $ pip install -e .  # To create an editable install of this package
@@ -23,8 +24,20 @@ your options (if different from the default shown here)::
     $ export MIQURL=http://localhost:3000/api
     $ export MIQUSERNAME=admin
     $ export MIQPASSWORD=smartvm
+    $ export MIQTOKEN=<<miq_ephemeral_token>>
 
     $ python example.py
+
+To generate a temporary miq token from the MIQ Dev environment use the following command::
+
+    $ bin/rails r 'puts Api::UserTokenService.new.generate_token("admin","api")'
+
+To run tests locally in a Dev Environment::
+
+    $ sudo pip install tox
+    $ tox # this will run tests on all versions of python
+    $ tox -e py27 -- -x testing/test_api_credentials.py # just on python 2.7
+
 
 
 Legal

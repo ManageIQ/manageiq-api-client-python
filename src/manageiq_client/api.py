@@ -24,20 +24,28 @@ class APIException(Exception):
 class ManageIQClient(object):
     def __init__(self, entry_point, auth, logger=None, verify_ssl=True, ca_bundle_path=None):
         """ If ca_bundle_path is specified it replaces the system's trusted root CAs"""
+        headers = {}
         self._entry_point = entry_point
         if isinstance(auth, dict):
-            self._auth = (auth["user"], auth["password"])
+            if "x-auth-token" in auth:
+                headers["X-Auth-Token"] = auth["x-auth-token"]
+                self._auth = None
+            else:
+                self._auth = (auth["user"], auth["password"])
         elif isinstance(auth, (tuple, list)):
             self._auth = tuple(auth[:2])
         else:
             raise ValueError("Unknown values provider for auth")
         self._session = requests.Session()
+        self._session.headers.update(headers)
         if not verify_ssl:
             self._session.verify = False
             warnings.filterwarnings('once', message='.*Unverified HTTPS request.*')
         elif ca_bundle_path:
             self._session.verify = ca_bundle_path
-        self._session.auth = self._auth
+
+        if self._auth:
+            self._session.auth = self._auth
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
         self.logger = logger or logging.getLogger(__name__)
         self.response = None
