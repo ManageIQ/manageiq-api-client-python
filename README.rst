@@ -26,6 +26,13 @@ your options (if different from the default shown here)::
 
     $ python example.py
 
+To run the example with an API Token use these settings::
+    
+    $ export MIQURL=http://localhost:3000/api
+    $ export MIQTOKEN=< place real token here >
+
+    $ python example.py
+
 
 Legal
 -----

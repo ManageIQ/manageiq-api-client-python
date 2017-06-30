@@ -25,23 +25,33 @@ class ManageIQClient(object):
     def __init__(self, entry_point, auth, logger=None, verify_ssl=True, ca_bundle_path=None):
         """ If ca_bundle_path is specified it replaces the system's trusted root CAs"""
         self._entry_point = entry_point
-        if isinstance(auth, dict):
-            self._auth = (auth["user"], auth["password"])
-        elif isinstance(auth, (tuple, list)):
-            self._auth = tuple(auth[:2])
-        else:
-            raise ValueError("Unknown values provider for auth")
         self._session = requests.Session()
+        self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
+        self._build_auth(auth)
         if not verify_ssl:
             self._session.verify = False
             warnings.filterwarnings('once', message='.*Unverified HTTPS request.*')
         elif ca_bundle_path:
             self._session.verify = ca_bundle_path
-        self._session.auth = self._auth
-        self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
         self.logger = logger or logging.getLogger(__name__)
         self.response = None
         self._load_data()
+
+    def _build_auth(self, auth):
+        valid = False
+        if isinstance(auth, dict):
+            if set(("user", "password")) <= set(auth):
+                self._session.auth = (auth["user"], auth["password"])
+                valid = True
+            if "token" in auth:
+                self._session.headers.update({'X-Auth-Token': auth['token']})
+                valid = True
+        elif isinstance(auth, (tuple, list)):  # for backward compatibility
+            self._session.auth = tuple(auth[:2])
+            valid = True
+
+        if not valid:
+            raise ValueError("Unknown values provided for auth")
 
     def _load_data(self):
         data = self.get(self._entry_point)
