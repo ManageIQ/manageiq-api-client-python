@@ -622,14 +622,10 @@ class Action(object):
             if "id" in result:
                 d["href"] = "{}/{}".format(collection._href, result["id"])
             return Entity(collection, d)
-        elif "task_href" in result or "task_id" in result:
-            collection = getattr(self.api.collections, "tasks")
+        elif "task_href" in result:
+            collection = self.api.collections.tasks
             # reuse task_href and task_id, no other data is relevant
-            d = {}
-            if result.get("task_href"):
-                d["href"] = result["task_href"]
-            if result.get("task_id"):
-                d["id"] = result["task_id"]
+            d = {"href": result.get("task_href"), "id": result.get("task_id")}
             return Entity(collection, d, incomplete=True)
         elif "message" in result:
             return result
