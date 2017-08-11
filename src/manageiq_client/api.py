@@ -616,11 +616,33 @@ class Action(object):
             self.api.response = action_response
         return outcome
 
+    def _get_entity_from_href(self, result):
+        href_result = result['href']
+        href_match = None
+
+        # If the "href" value in result doesn't match the current collection,
+        # try to find the collection that the "href" refers to.
+        if self.collection._href not in href_result:
+            href_match = re.match(r"(http[^?]+)/([a-z_-]+)", href_result)
+
+        if href_match:
+            collection_name = href_match.group(2)
+            entry_point = href_match.group(1)
+            if collection_name and entry_point:
+                new_collection = Collection(
+                    self.collection.api,
+                    "{}/{}".format(entry_point, collection_name),
+                    collection_name
+                )
+                return Entity(new_collection, result, incomplete=True)
+
+        return Entity(self.collection, result, incomplete=True)
+
     def _process_result(self, result):
         if result is None:
             return None
         elif "href" in result:
-            return Entity(self.collection, result, incomplete=True)
+            return self._get_entity_from_href(result)
         elif "id" in result:
             d = copy(result)
             d["href"] = "{}/{}".format(self.collection._href, result["id"])
