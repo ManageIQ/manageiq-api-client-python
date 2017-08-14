@@ -625,13 +625,6 @@ class Action(object):
             d = copy(result)
             d["href"] = "{}/{}".format(self.collection._href, result["id"])
             return Entity(self.collection, d, incomplete=True)
-        # TODO: Remove the branch under this condition since it can cause bad things to happen!
-        elif "request_state" in result and "requester_id" in result:
-            collection = getattr(self.api.collections, "service_requests")
-            d = copy(result)
-            if "id" in result:
-                d["href"] = "{}/{}".format(collection._href, result["id"])
-            return Entity(collection, d)
         elif "task_href" in result:
             collection = self.api.collections.tasks
             # reuse task_href and task_id, no other data is relevant
