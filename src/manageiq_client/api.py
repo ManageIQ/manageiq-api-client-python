@@ -30,7 +30,6 @@ class ManageIQClient(object):
         self._build_auth(auth)
         if not verify_ssl:
             self._session.verify = False
-            warnings.filterwarnings('once', message='.*Unverified HTTPS request.*')
         elif ca_bundle_path:
             self._session.verify = ca_bundle_path
         self.logger = logger or logging.getLogger(__name__)
