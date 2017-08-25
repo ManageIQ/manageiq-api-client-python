@@ -616,11 +616,34 @@ class Action(object):
             self.api.response = action_response
         return outcome
 
+    def _get_entity_from_href(self, result):
+        """Returns entity in correct collection.
+
+        If the "href" value in result doesn't match the current collection,
+        try to find the collection that the "href" refers to.
+        """
+        href_result = result['href']
+
+        if self.collection._href.startswith(href_result):
+            return Entity(self.collection, result, incomplete=True)
+
+        href_match = re.match(r"(https?://.+/api[^?]*)/([a-z_-]+)", href_result)
+        if not href_match:
+            raise ValueError("Malformed href: {}".format(href_result))
+        collection_name = href_match.group(2)
+        entry_point = href_match.group(1)
+        new_collection = Collection(
+            self.collection.api,
+            "{}/{}".format(entry_point, collection_name),
+            collection_name
+        )
+        return Entity(new_collection, result, incomplete=True)
+
     def _process_result(self, result):
         if result is None:
             return None
         elif "href" in result:
-            return Entity(self.collection, result, incomplete=True)
+            return self._get_entity_from_href(result)
         elif "id" in result:
             d = copy(result)
             d["href"] = "{}/{}".format(self.collection._href, result["id"])
