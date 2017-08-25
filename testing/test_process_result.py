@@ -7,7 +7,7 @@ from manageiq_client.api import Collection, ActionContainer, Action
 url_bases = [
     "https://example.com/api/v2.4.0/",
     "https://example.com/api/",
-    "https://127.0.0.1:8080//api",
+    "http://127.0.0.1:8080//api",
 ]
 
 url_variants = [
