@@ -27,7 +27,7 @@ malformed_urls = [
 
 
 @pytest.fixture(scope="function")
-def action(url_base="https://example.com/api"):
+def action(url_base):
     collection = Collection(None, "{}/collection".format(url_base), "collection")
     action_container = ActionContainer(collection)
     return Action(action_container, "create", "post", "{}/collection/123".format(url_base))
@@ -47,6 +47,7 @@ def test_get_entity_from_href(url_base, test_data, action):
 
 
 @pytest.mark.parametrize("test_data", malformed_urls)
+@pytest.mark.parametrize("url_base", ("https://example.com/api",), ids=['addr0'])
 def test_malformed_href(test_data, action):
     result = {"href": test_data}
     with pytest.raises(ValueError):
