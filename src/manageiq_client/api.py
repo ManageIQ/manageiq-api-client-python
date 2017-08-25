@@ -4,7 +4,6 @@
 import json
 import logging
 import re
-import warnings
 import requests
 import simplejson
 import six
