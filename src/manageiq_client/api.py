@@ -505,7 +505,16 @@ class ActionContainer(object):
         self._obj.reload_if_needed()
         reloaded_actions = []
         for action in self._obj._actions:
-            action_obj = Action(self, action["name"], action["method"], action["href"])
+
+            def _add_method(method=None):
+                """Adds HTTP method to Action, e.g. ``.delete.POST()``."""
+                method = method or action["method"]
+                new_name = method.upper()
+                base_action_obj = self.__dict__[action["name"]]
+                if not hasattr(base_action_obj, new_name):
+                    action_obj = base_action_obj if method == action["method"] else Action(
+                        self, action["name"], method, action["href"])
+                    setattr(base_action_obj, new_name, action_obj)
 
             # There can be multiple actions with the same name and different HTTP methods
             # (e.g. action "delete" with HTTP methods POST or DELETE).
@@ -515,17 +524,16 @@ class ActionContainer(object):
             # ``.delete.POST()`` and ``.delete.DELETE()``.
             if action["name"] not in reloaded_actions:
                 reloaded_actions.append(action["name"])
+                action_obj = Action(self, action["name"], action["method"], action["href"])
                 setattr(self, action["name"], action_obj)
+            _add_method()
 
-            setattr(self.__dict__[action["name"]],
-                    action["method"].upper(),
-                    action_obj)
-
-            # edit actions on entities can be performed using PATCH and PUT as well
+            # Edit actions on entities can be performed using PATCH and PUT methods as well.
+            # These methods are not listed in "actions", therefore adding
+            # them explicitly - see https://bugzilla.redhat.com/show_bug.cgi?id=1491336
             if action["name"] == "edit" and isinstance(self._obj, Entity):
                 for edit_method in ("patch", "put"):
-                    edit_obj = Action(self, "edit", edit_method, action["href"])
-                    setattr(self.__dict__["edit"], edit_method.upper(), edit_obj)
+                    _add_method(method=edit_method)
 
     def execute_action(self, action_name, *args, **kwargs):
         # To circumvent bad method names, like `import`, you can use this one directly
