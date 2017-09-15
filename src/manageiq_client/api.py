@@ -24,6 +24,9 @@ class ManageIQClient(object):
     def __init__(self, entry_point, auth, logger=None, verify_ssl=True, ca_bundle_path=None):
         """ If ca_bundle_path is specified it replaces the system's trusted root CAs"""
         self._entry_point = entry_point
+        self._auth = auth
+        self._verify_ssl = verify_ssl
+        self._ca_bundle_path = ca_bundle_path
         self._session = requests.Session()
         self._session.headers.update({'Content-Type': 'application/json; charset=utf-8'})
         self._build_auth(auth)
@@ -155,7 +158,12 @@ class ManageIQClient(object):
         return entity
 
     def api_version(self, version):
-        return type(self)(self._versions[version], self._auth)
+        return type(self)(
+            self._versions[version],
+            self._auth,
+            logger=self.logger,
+            verify_ssl=self._verify_ssl,
+            ca_bundle_path=self._ca_bundle_path)
 
     @property
     def versions(self):
