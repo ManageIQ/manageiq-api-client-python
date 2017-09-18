@@ -66,28 +66,31 @@ class ManageIQClient(object):
         return self._version
 
     def _result_processor(self, result):
+        # Save last full response
         self.response = result
+
+        result_json = None
         try:
-            result = result.json()
+            result_json = result.json()
         except simplejson.scanner.JSONDecodeError:
             result_text = result.text.strip()
             # HTTP methods other than GET and OPTIONS are allowed to return empty result
-            if not (result.request.method in ('GET', 'OPTIONS') or result_text):
-                return
-            else:
+            if result.request.method in ("GET", "OPTIONS") or result_text:
                 raise APIException("JSONDecodeError: {}".format(result_text or "empty result"))
 
-        if not isinstance(result, dict):
-            return result
-        if "error" in result:
-            if isinstance(result['error'], dict):
-                # raise
+        if result_json and "error" in result_json:
+            if isinstance(result_json["error"], dict):
                 raise APIException(
-                    "{}: {}".format(result["error"]["klass"], result["error"]["message"]))
+                    "{}: {}".format(result_json["error"]["klass"], result_json["error"]["message"]))
             else:
-                raise APIException('{}: {}'.format(result.get('status', None), result['error']))
-        else:
-            return result
+                raise APIException(
+                    "{}: {}".format(result_json.get("status", None), result_json["error"]))
+
+        # Check HTTP response status
+        if not result:
+            raise APIException("Request failed with status {}".format(result.status_code))
+
+        return result_json
 
     def _sending_request(self, func, retries=2):
         while retries:
