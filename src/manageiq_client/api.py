@@ -65,13 +65,14 @@ class ManageIQClient(object):
     def version(self):
         return self._version
 
-    def _result_processor(self, result, empty_allowed=True):
+    def _result_processor(self, result):
         self.response = result
         try:
             result = result.json()
         except simplejson.scanner.JSONDecodeError:
             result_text = result.text.strip()
-            if empty_allowed and not result_text:
+            # HTTP methods other than GET and OPTIONS are allowed to return empty result
+            if not (result.request.method in ('GET', 'OPTIONS') or result_text):
                 return
             else:
                 raise APIException("JSONDecodeError: {}".format(result_text or "empty result"))
@@ -101,7 +102,7 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
             partial(self._session.get, url, params=get_params))
-        return self._result_processor(data, empty_allowed=False)
+        return self._result_processor(data)
 
     def post(self, url, **payload):
         self.logger.info("[RESTAPI] POST %s %r", url, payload)
@@ -135,7 +136,7 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] OPTIONS %s %r", url, opt_params)
         data = self._sending_request(
             partial(self._session.options, url, params=opt_params))
-        return self._result_processor(data, empty_allowed=False)
+        return self._result_processor(data)
 
     def get_entity(self, collection_or_name, entity_id, attributes=None):
         if not isinstance(collection_or_name, Collection):
