@@ -88,7 +88,8 @@ class ManageIQClient(object):
 
         # Check HTTP response status
         if not result:
-            raise APIException("Request failed with status {}".format(result.status_code))
+            raise APIException("The request failed with HTTP status {}: {}".format(
+                result.status_code, result.reason))
 
         return result_json
 

@@ -204,7 +204,7 @@ class TestFailedResults(object):
     def test_interror(self, service):
         with HTTMock(interror_mock), pytest.raises(APIException) as excinfo:
             service.action.edit.POST(foo='bar')
-        assert 'Request failed with status 500' in str(excinfo.value)
+        assert 'failed with HTTP status 500' in str(excinfo.value)
         assert service.collection._api.response.status_code == 500
 
     def test_empty_get(self, api):
