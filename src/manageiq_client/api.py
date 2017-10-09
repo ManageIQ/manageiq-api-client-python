@@ -65,19 +65,33 @@ class ManageIQClient(object):
     def version(self):
         return self._version
 
-    @staticmethod
-    def _result_processor(result):
-        if not isinstance(result, dict):
-            return result
-        if "error" in result:
-            if isinstance(result['error'], dict):
-                # raise
+    def _result_processor(self, result):
+        # Save last full response
+        self.response = result
+
+        result_json = None
+        try:
+            result_json = result.json()
+        except simplejson.scanner.JSONDecodeError:
+            result_text = result.text.strip()
+            # HTTP methods other than GET and OPTIONS are allowed to return empty result
+            if result.request.method in ("GET", "OPTIONS") or result_text:
+                raise APIException("JSONDecodeError: {}".format(result_text or "empty result"))
+
+        if result_json and "error" in result_json:
+            if isinstance(result_json["error"], dict):
                 raise APIException(
-                    "{}: {}".format(result["error"]["klass"], result["error"]["message"]))
+                    "{}: {}".format(result_json["error"]["klass"], result_json["error"]["message"]))
             else:
-                raise APIException('{}: {}'.format(result.get('status', None), result['error']))
-        else:
-            return result
+                raise APIException(
+                    "{}: {}".format(result_json.get("status", None), result_json["error"]))
+
+        # Check HTTP response status
+        if not result:
+            raise APIException("The request failed with HTTP status {}: {}".format(
+                result.status_code, result.reason))
+
+        return result_json
 
     def _sending_request(self, func, retries=2):
         while retries:
@@ -92,11 +106,6 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] GET %s %r", url, get_params)
         data = self._sending_request(
             partial(self._session.get, url, params=get_params))
-        self.response = data
-        try:
-            data = data.json()
-        except simplejson.scanner.JSONDecodeError:
-            raise APIException("JSONDecodeError: {}".format(data.text))
         return self._result_processor(data)
 
     def post(self, url, **payload):
@@ -104,14 +113,20 @@ class ManageIQClient(object):
         data = self._sending_request(
             partial(self._session.post, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
-        self.response = data
-        try:
-            data = data.json()
-        except simplejson.scanner.JSONDecodeError:
-            if len(data.text.strip()) == 0:
-                return None
-            else:
-                raise APIException("JSONDecodeError: {}".format(data.text))
+        return self._result_processor(data)
+
+    def put(self, url, **payload):
+        self.logger.info("[RESTAPI] PUT %s %r", url, payload)
+        data = self._sending_request(
+            partial(self._session.put, url, data=json.dumps(payload)))
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
+        return self._result_processor(data)
+
+    def patch(self, url, *payload):
+        self.logger.info("[RESTAPI] PATCH %s %r", url, payload)
+        data = self._sending_request(
+            partial(self._session.patch, url, data=json.dumps(payload)))
+        self.logger.info("[RESTAPI] RESPONSE %s", data)
         return self._result_processor(data)
 
     def delete(self, url, **payload):
@@ -119,25 +134,12 @@ class ManageIQClient(object):
         data = self._sending_request(
             partial(self._session.delete, url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
-        self.response = data
-        try:
-            data = data.json()
-        except simplejson.scanner.JSONDecodeError:
-            if len(data.text.strip()) == 0:
-                return None
-            else:
-                raise APIException("JSONDecodeError: {}".format(data.text))
         return self._result_processor(data)
 
     def options(self, url, **opt_params):
         self.logger.info("[RESTAPI] OPTIONS %s %r", url, opt_params)
         data = self._sending_request(
             partial(self._session.options, url, params=opt_params))
-        self.response = data
-        try:
-            data = data.json()
-        except simplejson.scanner.JSONDecodeError:
-            raise APIException("JSONDecodeError: {}".format(data.text))
         return self._result_processor(data)
 
     def get_entity(self, collection_or_name, entity_id, attributes=None):
@@ -508,7 +510,17 @@ class ActionContainer(object):
         self._obj.reload_if_needed()
         reloaded_actions = []
         for action in self._obj._actions:
-            action_obj = Action(self, action["name"], action["method"], action["href"])
+
+            def _add_method(method=None):
+                """Adds HTTP method to Action, e.g. ``.delete.POST()``."""
+                method = method or action["method"]
+                new_name = method.upper()
+                base_action_obj = self.__dict__[action["name"]]
+                if not hasattr(base_action_obj, new_name):
+                    action_obj = base_action_obj if method == action["method"] else Action(
+                        self, action["name"], method, action["href"])
+                    setattr(base_action_obj, new_name, action_obj)
+
             # There can be multiple actions with the same name and different HTTP methods
             # (e.g. action "delete" with HTTP methods POST or DELETE).
             # Create action ``.name()`` with default (first) method.
@@ -517,10 +529,16 @@ class ActionContainer(object):
             # ``.delete.POST()`` and ``.delete.DELETE()``.
             if action["name"] not in reloaded_actions:
                 reloaded_actions.append(action["name"])
+                action_obj = Action(self, action["name"], action["method"], action["href"])
                 setattr(self, action["name"], action_obj)
-            setattr(self.__dict__[action["name"]],
-                    action["method"].upper(),
-                    action_obj)
+            _add_method()
+
+            # Edit actions on entities can be performed using PATCH and PUT methods as well.
+            # These methods are not listed in "actions", therefore adding
+            # them explicitly - see https://bugzilla.redhat.com/show_bug.cgi?id=1491336
+            if action["name"] == "edit" and isinstance(self._obj, Entity):
+                for edit_method in ("patch", "put"):
+                    _add_method(method=edit_method)
 
     def execute_action(self, action_name, *args, **kwargs):
         # To circumvent bad method names, like `import`, you can use this one directly
@@ -577,28 +595,31 @@ class Action(object):
         if force_method:
             return getattr(self, force_method.upper())(*args, **kwargs)
 
-        resources = []
-        # We got resources to post
-        for res in args:
-            if isinstance(res, Entity):
-                resources.append(res._ref_repr())
-            else:
-                resources.append(res)
-        query_dict = {"action": self._name}
-        if resources:
-            query_dict["resources"] = []
-            for resource in resources:
-                new_res = dict(resource)
-                if kwargs:
-                    new_res.update(kwargs)
-                query_dict["resources"].append(new_res)
-        else:
-            if kwargs:
-                query_dict["resource"] = kwargs
         if self._method == "post":
+            resources = []
+            # We got resources to post
+            for res in args:
+                if isinstance(res, Entity):
+                    resources.append(res._ref_repr())
+                else:
+                    resources.append(res)
+            query_dict = {"action": self._name}
+            if resources:
+                query_dict["resources"] = []
+                for resource in resources:
+                    new_res = dict(resource)
+                    if kwargs:
+                        new_res.update(kwargs)
+                    query_dict["resources"].append(new_res)
+            else:
+                if kwargs:
+                    query_dict["resource"] = kwargs
+
             result = self.api.post(self._href, **query_dict)
-        elif self._method == "delete":
-            result = self.api.delete(self._href, **query_dict)
+        elif self._method == "patch":
+            result = self.api.patch(self._href, *args)
+        elif self._method in ("delete", "put"):
+            result = getattr(self.api, self._method)(self._href, **kwargs)
         else:
             raise NotImplementedError
         if result is None:
