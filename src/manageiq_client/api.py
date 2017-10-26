@@ -329,12 +329,12 @@ class Collection(object):
 
     @property
     def count(self):
-        self.reload()
+        self.reload_if_needed()
         return self._count
 
     @property
     def subcount(self):
-        self.reload()
+        self.reload_if_needed()
         return self._subcount
 
     @property
@@ -408,15 +408,15 @@ class Entity(object):
         else:  # Malformed
             raise ValueError("Malformed data: {!r}".format(self._data))
 
-    def reload(self, expand=None, get=True, attributes='_default'):
+    def reload(self, expand=None, get=True, attributes=None):
         kwargs = {}
         if expand:
             if isinstance(expand, (list, tuple)):
                 expand = ",".join(map(str, expand))
             kwargs.update(expand=expand)
-        if attributes == '_default':
+        if attributes is None:
             attributes = self._attributes
-        if attributes is not None:
+        if attributes:
             if isinstance(attributes, six.string_types):
                 attributes = [attributes]
             kwargs.update(attributes=",".join(attributes))
