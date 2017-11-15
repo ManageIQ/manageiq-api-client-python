@@ -148,9 +148,10 @@ class ManageIQClient(object):
                 self, "{}/{}".format(self._entry_point, collection_or_name), collection_or_name)
         else:
             collection = collection_or_name
-        entity = Entity(collection, {"href": "{}/{}".format(collection._href, entity_id)})
-        if attributes is not None:
-            entity.reload(attributes=attributes)
+        entity = Entity(
+            collection,
+            {"href": "{}/{}".format(collection._href, entity_id)},
+            attributes=attributes)
         return entity
 
     def api_version(self, version):
@@ -257,13 +258,17 @@ class Collection(object):
                     "[RESTAPI] failed to get subcollections list for %s", self._href)
         return self._subcollections
 
-    def reload(self, expand=False):
+    def reload(self, expand=False, attributes=None):
         if expand is True:
             kwargs = {"expand": "resources"}
         elif expand:
             kwargs = {"expand": expand}
         else:
             kwargs = {}
+        if attributes is not None:
+            if isinstance(attributes, six.string_types):
+                attributes = [attributes]
+            kwargs.update(attributes=",".join(attributes))
         self._data = self._api.get(self._href, **kwargs)
         self._resources = self._data["resources"]
         self._count = self._data.get("count", 0)
@@ -334,8 +339,15 @@ class Collection(object):
 
     @property
     def all(self):
-        self.reload_if_needed()
-        return map(lambda r: Entity(self, r), self._resources)
+        self.reload(expand=True)
+        return [Entity(self, r) for r in self._resources]
+
+    def all_include_attributes(self, attributes):
+        """Returns all entities present in the collection with ``attributes`` included."""
+        self.reload(expand=True, attributes=attributes)
+        entities = [Entity(self, r, attributes=attributes) for r in self._resources]
+        self.reload()
+        return entities
 
     def __repr__(self):
         return "<Collection {!r} ({!r})>".format(self.name, self.description)
@@ -378,11 +390,12 @@ class Entity(object):
         roles={"features"},
     )
 
-    def __init__(self, collection, data, incomplete=False):
+    def __init__(self, collection, data, incomplete=False, attributes=None):
         self.collection = collection
         self.action = ActionContainer(self)
         self._data = data
         self._incomplete = incomplete
+        self._attributes = attributes
         self._href = None
         self._load_data()
 
@@ -401,7 +414,9 @@ class Entity(object):
             if isinstance(expand, (list, tuple)):
                 expand = ",".join(map(str, expand))
             kwargs.update(expand=expand)
-        if attributes is not None:
+        if attributes is None:
+            attributes = self._attributes
+        if attributes:
             if isinstance(attributes, six.string_types):
                 attributes = [attributes]
             kwargs.update(attributes=",".join(attributes))
