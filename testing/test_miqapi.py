@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=no-self-use
 import re
 
+import mock
 import pytest
 
 from httmock import all_requests, HTTMock
@@ -14,13 +16,13 @@ API_CONTENT = {
     "versions": [
         {
             "name": "2.4.0",
-            "href": "http://www.test.com/api/v2.4.0"
+            "href": "http://example.com/api/v2.4.0"
         }
     ],
     "collections": [
         {
             "name": "servers",
-            "href": "https://www.test.com/api/servers",
+            "href": "https://example.com/api/servers",
             "description": "EVM Servers"
         }
     ]
@@ -32,7 +34,7 @@ SERVERS_CONTENT = {
     "subcount": 1,
     "resources": [
         {
-            "href": "https://www.test.com/api/servers/1"
+            "href": "https://example.com/api/servers/1"
         }
     ]
 }
@@ -43,7 +45,7 @@ SERVERS_W_ATTRIBUTES_CONTENT = {
     "subcount": 1,
     "resources": [
         {
-            "href": "https://www.test.com/api/servers/1",
+            "href": "https://example.com/api/servers/1",
             "id": 1,
             "name": "EVM",
             "region_number": 0
@@ -52,13 +54,13 @@ SERVERS_W_ATTRIBUTES_CONTENT = {
 }
 
 SERVER_ENTITY_CONTENT = {
-    "href": "https://www.test.com/api/servers/1",
+    "href": "https://example.com/api/servers/1",
     "id": 1,
     "name": "EVM"
 }
 
 SERVER_ENTITY_W_ATTRIBUTES_CONTENT = {
-    "href": "https://www.test.com/api/servers/1",
+    "href": "https://example.com/api/servers/1",
     "id": 1,
     "name": "EVM",
     "region_number": 0
@@ -91,7 +93,7 @@ def servers_mock(url, request):
 @pytest.fixture(scope='module')
 def api():
     with HTTMock(api_mock):
-        api = MiqApi('http://www.test.com/api', ('admin', 'admin'), verify_ssl=False)
+        api = MiqApi('http://example.com/api', ('admin', 'admin'), verify_ssl=False)
     return api
 
 
@@ -148,3 +150,44 @@ class TestEntities(object):
             assert srv.region_number == 0
             srv.reload()
             assert srv.region_number == 0
+
+
+class TestAPIInit(object):
+    def test_api_version(self):
+        with HTTMock(api_mock):
+            api_default = MiqApi('http://example.com/api', ('admin', 'admin'), verify_ssl=False)
+            api_version = api_default.api_version('2.4.0')
+            assert api_default._entry_point == 'http://example.com/api'
+            assert api_version._entry_point == 'http://example.com/api/v2.4.0'
+            assert api_default._auth == api_version._auth
+            assert api_default.logger is api_version.logger
+            assert api_default._verify_ssl == api_version._verify_ssl
+            assert api_default._ca_bundle_path == api_version._ca_bundle_path
+
+
+class TestAPICredentials(object):
+    def test_no_user_password_dict_list_or_tuple(self):
+        with pytest.raises(ValueError):
+            MiqApi('http://example.com', {})
+            MiqApi('http://example.com', [])
+            MiqApi('http://example.com', ())
+
+    def test_no_user_or_password_dict(self):
+        with pytest.raises(ValueError):
+            MiqApi('http://example.com', {'user': 'Bob'})
+            MiqApi('http://example.com', {'password': 'Bob'})
+
+    @mock.patch('manageiq_client.api.ManageIQClient._load_data')
+    def test_token_passed_in_dict(self, load):
+        MiqApi('http://example.com', {'token': '123234'})
+
+    def test_invalid_token_key(self):
+        with pytest.raises(ValueError):
+            MiqApi('http://example.com', {'Token': '123234'})
+            MiqApi('http://example.com', {'Broken': '123234'})
+            MiqApi('http://example.com', ['123234'])
+            MiqApi('http://example.com', ('123234',))
+
+    @mock.patch('manageiq_client.api.ManageIQClient._load_data')
+    def test_valid_login_credentials(self, load):
+        MiqApi('http://example.com', {'user': 'Bob', 'password': '12345'})
