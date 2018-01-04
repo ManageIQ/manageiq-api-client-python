@@ -31,7 +31,6 @@ setup(
         "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Intended Audience :: Developers",
