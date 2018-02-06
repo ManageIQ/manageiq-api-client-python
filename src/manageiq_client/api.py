@@ -587,7 +587,7 @@ class ActionContainer(object):
 
     def __getattr__(self, attr):
         self.reload()
-        if not hasattr(self, attr):
+        if attr not in self.__dict__:
             raise AttributeError("No such action {}".format(attr))
         return getattr(self, attr)
 
