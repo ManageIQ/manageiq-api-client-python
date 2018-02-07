@@ -589,7 +589,7 @@ class ActionContainer(object):
         self.reload()
         if attr not in self.__dict__:
             raise AttributeError("No such action {}".format(attr))
-        return getattr(self, attr)
+        return self.__dict__[attr]
 
     def __contains__(self, action):
         return action in self.all
