@@ -438,6 +438,8 @@ class Entity(object):
                 self._data.update(new)
         self._actions = self._data.pop("actions", [])
         for key, value in self._data.items():
+            if value is None:
+                continue
             if key in self.TIME_FIELDS:
                 setattr(self, key, iso8601.parse_date(value))
             elif key in self.COLLECTION_MAPPING.keys():
