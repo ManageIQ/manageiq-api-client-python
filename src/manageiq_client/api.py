@@ -4,13 +4,14 @@
 import json
 import logging
 import re
-import requests
-import simplejson
-import six
-import iso8601
 from copy import copy
 from distutils.version import LooseVersion
 from functools import partial
+
+import iso8601
+import requests
+import simplejson
+import six
 from wait_for import wait_for
 
 from .filters import Q
@@ -208,14 +209,14 @@ class CollectionsIndex(object):
 
 
 class SearchResult(object):
-    def __init__(self, collection, data):
+    def __init__(self, collection, data, attributes=None, expand=None):
         self.collection = collection
         self.count = data.pop("count", 0)
         self.subcount = data.pop("subcount", 0)
         self.name = data.pop("name")
         self.resources = []
         for resource in data["resources"]:
-            self.resources.append(Entity(collection, resource))
+            self.resources.append(Entity(collection, resource, attributes=attributes, expand=expand))
 
     def __iter__(self):
         for resource in self.resources:
@@ -296,39 +297,43 @@ class Collection(object):
         """
         return SearchResult(self, self._api.get(self._href, **params))
 
-    def raw_filter(self, filters):
+    def raw_filter(self, filters, attributes=None, expand=None):
         """Sends all filters to the API.
 
         No fancy, just a wrapper. Any advanced functionality shall be implemented as another method.
 
         Args:
             filters: List of filters (strings)
+            attributes: List of attributes to include in the query of result
+            expand: List of properties to expand
 
         Returns: :py:class:`SearchResult`
         """
-        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters}))
+        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters}), attributes=attributes, expand=expand)
 
-    def filter(self, q):
+    def filter(self, q, attributes=None, expand=None):
         """Access the ``filter[]`` functionality of ManageIQ.
 
         Args:
             q: An instance of :py:class:`filters.Q`
+            attributes: List of attributes to include in the query of result
+            expand: List of properties to expand
 
         Returns: :py:class:`SearchResult`
         """
-        return self.raw_filter(q.as_filters)
+        return self.raw_filter(q.as_filters, attributes=attributes, expand=expand)
 
-    def find_by(self, **params):
+    def find_by(self,  attributes=None, expand=None, **params):
         """Searches in ManageIQ using the ``filter[]`` get parameter.
 
         This method only supports logical AND so all key/value pairs are considered as equality
         comparision and all are logically anded.
         """
-        return self.filter(Q.from_dict(params))
+        return self.filter(Q.from_dict(params), attributes=attributes, expand=expand)
 
-    def get(self, **params):
+    def get(self, attributes=None, expand=None, **params):
         try:
-            return self.find_by(**params)[0]
+            return self.find_by(attributes=attributes, expand=expand, **params)[0]
         except IndexError:
             raise ValueError("No such '{}' matching query {!r}!".format(self.name, params))
 
@@ -398,12 +403,13 @@ class Entity(object):
         roles={"features"},
     )
 
-    def __init__(self, collection, data, incomplete=False, attributes=None):
+    def __init__(self, collection, data, incomplete=False, attributes=None, expand=None):
         self.collection = collection
         self.action = ActionContainer(self)
         self._data = data
         self._incomplete = incomplete
         self._attributes = attributes
+        self._expand = expand
         self._href = None
         self._load_data()
 
@@ -418,6 +424,8 @@ class Entity(object):
 
     def reload(self, expand=None, get=True, attributes=None):
         kwargs = {}
+        if expand is None:
+            expand = self._expand
         if expand:
             if isinstance(expand, (list, tuple)):
                 expand = ",".join(map(str, expand))
@@ -463,6 +471,11 @@ class Entity(object):
                     href += "/"
                 subcol = Collection(self.collection._api, href + key, key)
                 setattr(self, key, subcol)
+            elif isinstance(value, list) and all(isinstance(x, dict) and x.get('href', False) for x in value):
+                entities = list(Entity(self.collection, x) for x in value)
+                setattr(self, key, entities)
+            elif isinstance(value, dict) and value.get('href', False):
+                setattr(self, key, Entity(self.collection, value))
             else:
                 setattr(self, key, value)
 
