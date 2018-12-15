@@ -173,6 +173,21 @@ class TestActionMethods(object):
             getattr(service.action, 'foo')
         assert 'No such action foo' == str(excinfo.value)
 
+    def test_methods(self, api):
+        with HTTMock(services_mock):
+            services = api.collections.services
+            services.reload()
+            assert services.action.create.POST._method == 'post'
+            assert services.action.edit.POST._method == 'post'
+            assert services.action.delete.POST._method == 'post'
+        with HTTMock(service_mock):
+            service = api.collections.services[0]
+            assert service.action.edit.PATCH._method == 'patch'
+            assert service.action.edit.POST._method == 'post'
+            assert service.action.edit.PUT._method == 'put'
+            assert service.action.delete.POST._method == 'post'
+            assert service.action.delete.DELETE._method == 'delete'
+
     def test_edit_patch(self, service, captured_log):
         with HTTMock(service_mock):
             outcome = service.action.edit.PATCH({
