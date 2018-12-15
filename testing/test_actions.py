@@ -162,6 +162,17 @@ class TestActionMethods(object):
             assert hasattr(service.action.delete, 'POST')
             assert hasattr(service.action.delete, 'DELETE')
 
+    def test_actions_absent(self, api):
+        with HTTMock(services_mock), pytest.raises(AttributeError) as excinfo:
+            services = api.collections.services
+            services.reload()
+            getattr(services.action, 'foo')
+        assert 'No such action foo' == str(excinfo.value)
+        with HTTMock(service_mock), pytest.raises(AttributeError) as excinfo:
+            service = api.collections.services[0]
+            getattr(service.action, 'foo')
+        assert 'No such action foo' == str(excinfo.value)
+
     def test_edit_patch(self, service, captured_log):
         with HTTMock(service_mock):
             outcome = service.action.edit.PATCH({
