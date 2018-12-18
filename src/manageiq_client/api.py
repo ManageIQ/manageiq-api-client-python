@@ -542,7 +542,7 @@ class ActionContainer(object):
                 new_name = method.upper()
                 base_action_obj = self.__dict__[action["name"]]
                 if not hasattr(base_action_obj, new_name):
-                    action_obj = base_action_obj if method == action["method"] else Action(
+                    action_obj = base_action_obj if method == base_action_obj._method else Action(
                         self, action["name"], method, action["href"])
                     setattr(base_action_obj, new_name, action_obj)
 
