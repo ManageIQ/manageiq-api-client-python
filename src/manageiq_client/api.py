@@ -225,7 +225,7 @@ class SearchResult(object):
 
     def __getitem__(self, position):
         entity = self.resources[position]
-        entity.reload()
+        entity._load_data()
         return entity
 
     def __len__(self):
@@ -309,7 +309,7 @@ class Collection(object):
 
         Returns: :py:class:`SearchResult`
         """
-        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters}), attributes=attributes, expand=expand)
+        return SearchResult(self, self._api.get(self._href, **{"filter[]": filters, "attributes": attributes, "expand": expand}), attributes=attributes, expand=expand)
 
     def filter(self, q, attributes=None, expand=None):
         """Access the ``filter[]`` functionality of ManageIQ.
