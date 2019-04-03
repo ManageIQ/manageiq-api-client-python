@@ -198,7 +198,7 @@ class CollectionsIndex(object):
 
     @property
     def all_names(self):
-        return map(lambda c: c.name, self.all)
+        return [c.name for c in self.all]
 
     def __contains__(self, collection):
         if isinstance(collection, six.string_types):
@@ -576,7 +576,7 @@ class ActionContainer(object):
     @property
     def all(self):
         self.reload()
-        return map(lambda a: a["name"], self._obj._actions)
+        return [a["name"] for a in self._obj._actions]
 
     @property
     def collection(self):
@@ -653,7 +653,7 @@ class Action(object):
         action_response = self.api.response
         try:
             if "results" in result:
-                outcome = map(self._process_result, result["results"])
+                outcome = [self._process_result(r) for r in result["results"]]
             else:
                 outcome = self._process_result(result)
         finally:
