@@ -105,40 +105,44 @@ class ManageIQClient(object):
                 retries -= 1
         raise last_connection_exception
 
-    def get(self, _endpoint_url=None, **get_params):
-        if not _endpoint_url:
+    def get(self, api_endpoint_url=None, **get_params):
+        if not api_endpoint_url:
             if "url" not in get_params:
                 raise ValueError(
-                    "'_endpoint_url' or 'url' key must be specified in the parameters."
+                    "'api_endpoint_url' or 'url' key must be specified in the parameters."
                 )
-            _endpoint_url = get_params.pop("url")
+            api_endpoint_url = get_params.pop("url")
 
-        self.logger.info("[RESTAPI] GET %s %r", _endpoint_url, get_params)
+        self.logger.info("[RESTAPI] GET %s %r", api_endpoint_url, get_params)
         data = self._sending_request(
-            partial(self._session.get, _endpoint_url, params=get_params))
+            partial(self._session.get, api_endpoint_url, params=get_params))
         return self._result_processor(data)
 
-    def post(self, _endpoint_url=None, **payload):
-        if not _endpoint_url:
+    def post(self, api_endpoint_url=None, **payload):
+        if not api_endpoint_url:
             if "url" not in payload:
-                raise ValueError("'_endpoint_url' or 'url' key must be specified in the payload.")
-            _endpoint_url = payload.pop("url")
+                raise ValueError(
+                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                )
+            api_endpoint_url = payload.pop("url")
 
-        self.logger.info("[RESTAPI] POST %s %r", _endpoint_url, payload)
+        self.logger.info("[RESTAPI] POST %s %r", api_endpoint_url, payload)
         data = self._sending_request(
-            partial(self._session.post, _endpoint_url, data=json.dumps(payload)))
+            partial(self._session.post, api_endpoint_url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         return self._result_processor(data)
 
-    def put(self, _endpoint_url=None, **payload):
-        if not _endpoint_url:
+    def put(self, api_endpoint_url=None, **payload):
+        if not api_endpoint_url:
             if "url" not in payload:
-                raise ValueError("'_endpoint_url' or 'url' key must be specified in the payload.")
-            _endpoint_url = payload.pop("url")
+                raise ValueError(
+                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                )
+            api_endpoint_url = payload.pop("url")
 
-        self.logger.info("[RESTAPI] PUT %s %r", _endpoint_url, payload)
+        self.logger.info("[RESTAPI] PUT %s %r", api_endpoint_url, payload)
         data = self._sending_request(
-            partial(self._session.put, _endpoint_url, data=json.dumps(payload)))
+            partial(self._session.put, api_endpoint_url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         return self._result_processor(data)
 
@@ -149,29 +153,31 @@ class ManageIQClient(object):
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         return self._result_processor(data)
 
-    def delete(self, _endpoint_url=None, **payload):
-        if not _endpoint_url:
+    def delete(self, api_endpoint_url=None, **payload):
+        if not api_endpoint_url:
             if "url" not in payload:
-                raise ValueError("'_endpoint_url' or 'url' key must be specified in the payload.")
-            _endpoint_url = payload.pop("url")
+                raise ValueError(
+                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                )
+            api_endpoint_url = payload.pop("url")
 
-        self.logger.info("[RESTAPI] DELETE %s %r", _endpoint_url, payload)
+        self.logger.info("[RESTAPI] DELETE %s %r", api_endpoint_url, payload)
         data = self._sending_request(
-            partial(self._session.delete, _endpoint_url, data=json.dumps(payload)))
+            partial(self._session.delete, api_endpoint_url, data=json.dumps(payload)))
         self.logger.info("[RESTAPI] RESPONSE %s", data)
         return self._result_processor(data)
 
-    def options(self, _endpoint_url=None, **opt_params):
-        if not _endpoint_url:
+    def options(self, api_endpoint_url=None, **opt_params):
+        if not api_endpoint_url:
             if "url" not in opt_params:
                 raise ValueError(
-                    "'_endpoint_url' or 'url' key must be specified in the parameters."
+                    "'api_endpoint_url' or 'url' key must be specified in the parameters."
                 )
-            _endpoint_url = opt_params.pop("url")
+            api_endpoint_url = opt_params.pop("url")
 
-        self.logger.info("[RESTAPI] OPTIONS %s %r", _endpoint_url, opt_params)
+        self.logger.info("[RESTAPI] OPTIONS %s %r", api_endpoint_url, opt_params)
         data = self._sending_request(
-            partial(self._session.options, _endpoint_url, params=opt_params))
+            partial(self._session.options, api_endpoint_url, params=opt_params))
         return self._result_processor(data)
 
     def get_entity(self, collection_or_name, entity_id, attributes=None):
