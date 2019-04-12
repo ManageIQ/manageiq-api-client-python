@@ -109,7 +109,8 @@ class ManageIQClient(object):
         if not api_endpoint_url:
             if "url" not in get_params:
                 raise ValueError(
-                    "'api_endpoint_url' or 'url' key must be specified in the parameters."
+                    "url must be specified, as positional parameter,"
+                    "or (deprecated) 'url' keyword parameter"
                 )
             api_endpoint_url = get_params.pop("url")
 
@@ -122,7 +123,8 @@ class ManageIQClient(object):
         if not api_endpoint_url:
             if "url" not in payload:
                 raise ValueError(
-                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                    "url must be specified, as positional parameter,"
+                    "or (deprecated) 'url' keyword parameter"
                 )
             api_endpoint_url = payload.pop("url")
 
@@ -136,7 +138,8 @@ class ManageIQClient(object):
         if not api_endpoint_url:
             if "url" not in payload:
                 raise ValueError(
-                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                    "url must be specified, as positional parameter,"
+                    "or (deprecated) 'url' keyword parameter"
                 )
             api_endpoint_url = payload.pop("url")
 
@@ -157,7 +160,8 @@ class ManageIQClient(object):
         if not api_endpoint_url:
             if "url" not in payload:
                 raise ValueError(
-                    "'api_endpoint_url' or 'url' key must be specified in the payload."
+                    "url must be specified, as positional parameter,"
+                    "or (deprecated) 'url' keyword parameter"
                 )
             api_endpoint_url = payload.pop("url")
 
@@ -171,7 +175,8 @@ class ManageIQClient(object):
         if not api_endpoint_url:
             if "url" not in opt_params:
                 raise ValueError(
-                    "'api_endpoint_url' or 'url' key must be specified in the parameters."
+                    "url must be specified, as positional parameter,"
+                    "or (deprecated) 'url' keyword parameter"
                 )
             api_endpoint_url = opt_params.pop("url")
 
