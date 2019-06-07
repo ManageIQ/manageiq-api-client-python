@@ -737,7 +737,7 @@ class Action(object):
             # reuse task_href and task_id, no other data is relevant
             d = {"href": result.get("task_href"), "id": result.get("task_id")}
             return Entity(collection, d, incomplete=True)
-        elif "message" in result:
+        elif "message" in result or set(("valid", "invalid", "conflicted")).issubset(result):
             return result
         else:
             raise NotImplementedError
