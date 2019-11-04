@@ -2,8 +2,17 @@
 # -*- encoding: utf-8 -*-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+import sys
 from setuptools import setup
 
+
+if sys.version_info < (3,):
+    versioned_requirements = ["wait-for<1.1.0"]
+else:
+    versioned_requirements = ["wait-for"]
+
+requirements = ["requests", "iso8601", "simplejson", "six"]
+requirements.extend(versioned_requirements)
 
 setup(
     name="manageiq-client",
@@ -16,13 +25,7 @@ setup(
     url="https://github.com/ManageIQ/manageiq-api-client-python",
     packages=["manageiq_client"],
     package_dir={'': 'src'},
-    install_requires=[
-        'requests',
-        'wait-for',
-        'iso8601',
-        'simplejson',
-        'six',
-    ],
+    install_requires=requirements,
     setup_requires=[
         'setuptools_scm',
     ],
